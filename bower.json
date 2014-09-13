@@ -6,7 +6,7 @@
   "main": "./build/MIDI.min.js",
   "license": "MIT",
   "private": true,
-  "dependencies": {
+  "devDependencies": {
     "midi-js-soundfonts": "gleitz/midi-js-soundfonts#master"
   }
 }
