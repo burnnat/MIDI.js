@@ -889,8 +889,8 @@ if (typeof (MIDI.Player) === "undefined") MIDI.Player = {};
 var root = MIDI.Player;
 root.callback = undefined; // your custom callback goes here!
 root.currentTime = 0;
-root.endTime = 0; 
-root.restart = 0; 
+root.endTime = 0;
+root.restart = 0;
 root.playing = false;
 root.timeWarp = 1;
 
@@ -1009,7 +1009,7 @@ root.loadFile = function (file, callback) {
 // Playing the audio
 
 var eventQueue = []; // hold events to be triggered
-var queuedTime; // 
+var queuedTime; //
 var startTime = 0; // to measure time elapse
 var noteRegistrar = {}; // get event for requested note
 var onMidiEvent = undefined; // listener callback
@@ -1071,7 +1071,7 @@ var startAudio = function (currentTime, fromCache) {
 	var note;
 	var offset = 0;
 	var messages = 0;
-	var data = root.data;	
+	var data = root.data;
 	var ctx = getContext();
 	var length = data.length;
 	//
@@ -1108,6 +1108,9 @@ var startAudio = function (currentTime, fromCache) {
 					interval: scheduleTracking(channel, note, queuedTime, offset, 128)
 				});
 				break;
+			case 'programChange':
+			  MIDI.programChange(channel, event.programNumber);
+			  break;
 			default:
 				break;
 		}
