@@ -97,6 +97,7 @@ module.exports = function (grunt) {
   });
 
 	///
-	grunt.registerTask('default', ['concat', 'uglify', 'soundfont']);
+	grunt.registerTask('js', ['concat', 'uglify']);
+	grunt.registerTask('default', ['js', 'soundfont']);
 	///
 };
