@@ -254,7 +254,7 @@ var createQueue = function(conf) {
 	--------------------------------------------
 	https://github.com/mudcube/MIDI.js
 	--------------------------------------------
-	Inspired by javax.sound.midi (albeit a super simple version): 
+	Inspired by javax.sound.midi (albeit a super simple version):
 		http://docs.oracle.com/javase/6/docs/api/javax/sound/midi/package-summary.html
 	--------------------------------------------
 	Technologies:
@@ -324,14 +324,14 @@ var setPlugin = function(root) {
 			output.send([0x90 + channel, note, velocity], delay * 1000);
 		}
 	};
-	
+
 	root.chordOff = function (channel, chord, delay) {
 		for (var n = 0; n < chord.length; n ++) {
 			var note = chord[n];
 			output.send([0x80 + channel, note, 0], delay * 1000);
 		}
 	};
-	
+
 	root.stopAllNotes = function () {
 		for (var channel = 0; channel < 16; channel ++) {
 			output.send([0xB0 + channel, 0x7B, 0]);
@@ -341,7 +341,7 @@ var setPlugin = function(root) {
 	root.getInput = function () {
 		return plugin.getInputs();
 	};
-	
+
 	root.getOutputs = function () {
 		return plugin.getOutputs();
 	};
@@ -380,10 +380,17 @@ if (window.AudioContext || window.webkitAudioContext) (function () {
 		api: "webaudio"
 	};
 	var ctx;
+	var master;
 	var sources = {};
 	var masterVolume = 127;
+	var loadedInstruments = {};
 	var audioBuffers = {};
 	var audioLoader = function (instrument, urlList, index, bufferList, callback) {
+	  if (loadedInstruments[instrument]) {
+	    // already loaded, so just skip ahead
+	    return callback(instrument);
+	  }
+
 		var synth = MIDI.GeneralMIDI.byName[instrument];
 		var instrumentId = synth.number;
 		var url = urlList[index];
@@ -396,7 +403,7 @@ if (window.AudioContext || window.webkitAudioContext) (function () {
 			var msg = url;
 			while (msg.length < 3) msg += "&nbsp;";
 			if (typeof (MIDI.loader) !== "undefined") {
-				MIDI.loader.update(null, synth.instrument + "<br>Processing: " + (index / 87 * 100 >> 0) + "%<br>" + msg);
+				MIDI.loader.update(null, "Loading '" + synth.instrument + "'", index / 87 * 100 >> 0);
 			}
 			buffer.id = url;
 			bufferList[index] = buffer;
@@ -408,13 +415,19 @@ if (window.AudioContext || window.webkitAudioContext) (function () {
 					var nodeId = MIDI.keyToNote[buffer.id];
 					audioBuffers[instrumentId + "" + nodeId] = buffer;
 				}
+				loadedInstruments[instrument] = true;
 				callback(instrument);
 			}
 		});
 	};
 
 	root.setVolume = function (channel, volume) {
-		masterVolume = volume;
+	  if (channel === -1) {
+	    master.gain.value = volume / 127;
+	  }
+	  else {
+		  masterVolume = volume;
+	  }
 	};
 
 	root.programChange = function (channel, program) {
@@ -432,7 +445,7 @@ if (window.AudioContext || window.webkitAudioContext) (function () {
 		var source = ctx.createBufferSource();
 		sources[channel + "" + note] = source;
 		source.buffer = audioBuffers[instrument + "" + note];
-		source.connect(ctx.destination);
+		source.connect(master);
 		///
 		if (ctx.createGain) { // firefox
 			source.gainNode = ctx.createGain();
@@ -440,7 +453,7 @@ if (window.AudioContext || window.webkitAudioContext) (function () {
 			source.gainNode = ctx.createGainNode();
 		}
 		var value = (velocity / 127) * (masterVolume / 127) * 2 - 1;
-		source.gainNode.connect(ctx.destination);
+		source.gainNode.connect(master);
 		source.gainNode.gain.value = Math.max(-1, value);
 		source.connect(source.gainNode);
 		if (source.noteOn) { // old api
@@ -457,7 +470,7 @@ if (window.AudioContext || window.webkitAudioContext) (function () {
 		var source = sources[channel + "" + note];
 		if (!source) return;
 		if (source.gainNode) {
-			// @Miranet: "the values of 0.2 and 0.3 could ofcourse be used as 
+			// @Miranet: "the values of 0.2 and 0.3 could ofcourse be used as
 			// a 'release' parameter for ADSR like time settings."
 			// add { "metadata": { release: 0.3 } } to soundfont files
 			var gain = source.gainNode.gain;
@@ -507,6 +520,9 @@ if (window.AudioContext || window.webkitAudioContext) (function () {
 		setPlugin(root);
 		//
 		MIDI.Player.ctx = ctx = new AudioContext();
+		master = ctx.createGain();
+    master.connect(ctx.destination);
+		master.gain.value = 1;
 		///
 		var urlList = [];
 		var keyToNote = MIDI.keyToNote;
@@ -541,7 +557,7 @@ if (window.Audio) (function () {
 		api: "audiotag"
 	};
 	var note2id = {};
-	var volume = 127; // floating point 
+	var volume = 127; // floating point
 	var channel_nid = -1; // current channel
 	var channels = []; // the audio channels
 	var channelInstrumentNoteIds = []; // instrumentId + noteId that is currently playing in each 'channel', for routing noteOff/chordOff calls
@@ -605,7 +621,7 @@ if (window.Audio) (function () {
 			playChannel(channel, id);
 		}
 	};
-	
+
 	root.noteOff = function (channel, note, delay) {
 		var id = note2id[note];
 		if (!notes[id]) return;
@@ -617,7 +633,7 @@ if (window.Audio) (function () {
 			stopChannel(channel, id);
 		}
 	};
-	
+
 	root.chordOn = function (channel, chord, velocity, delay) {
 		for (var idx = 0; idx < chord.length; idx ++) {
 			var n = chord[idx];
@@ -632,7 +648,7 @@ if (window.Audio) (function () {
 			}
 		}
 	};
-	
+
 	root.chordOff = function (channel, chord, delay) {
 		for (var idx = 0; idx < chord.length; idx ++) {
 			var n = chord[idx];
@@ -647,13 +663,13 @@ if (window.Audio) (function () {
 			}
 		}
 	};
-	
+
 	root.stopAllNotes = function () {
 		for (var nid = 0, length = channels.length; nid < length; nid++) {
 			channels[nid].pause();
 		}
 	};
-	
+
 	root.connect = function (conf) {
 		for (var key in MIDI.keyToNote) {
 			note2id[MIDI.keyToNote[key]] = key;
@@ -674,7 +690,7 @@ if (window.Audio) (function () {
 	http://www.schillmania.com/projects/soundmanager2/
 	--------------------------------------------
 */
-	
+
 (function () {
 
 	var root = MIDI.Flash = {
@@ -698,7 +714,7 @@ if (window.Audio) (function () {
 		note = id + "" + noteReverse[note];
 		if (!notes[note]) return;
 		if (delay) {
-			return window.setTimeout(function() { 
+			return window.setTimeout(function() {
 				notes[note].play({ volume: velocity * 2 });
 			}, delay * 1000);
 		} else {
@@ -749,12 +765,12 @@ if (window.Audio) (function () {
 					multiShot: true,
 					autoLoad: true,
 					onload: onload
-				});			
+				});
 			};
 			var loaded = [];
 			var samplesPerInstrument = 88;
 			var samplesToLoad = instruments.length * samplesPerInstrument;
-				
+
 			for (var i = 0; i < instruments.length; i++) {
 				var instrument = instruments[i];
 				var onload = function () {
@@ -806,8 +822,8 @@ MIDI.GeneralMIDI = (function (arr) {
 			if (!instrument) continue;
 			var num = parseInt(instrument.substr(0, instrument.indexOf(" ")), 10);
 			instrument = instrument.replace(num + " ", "");
-			ret.byId[--num] = 
-			ret.byName[clean(instrument)] = 
+			ret.byId[--num] =
+			ret.byName[clean(instrument)] =
 			ret.byCategory[clean(key)] = {
 				id: clean(instrument),
 				instrument: instrument,
